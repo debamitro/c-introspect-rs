@@ -52,6 +52,16 @@ fn parse_struct(mut itr: TokenItr) -> Option<C_Struct> {
     return None;
 }
 
+pub struct C_Declaration {
+    pub typename: String,
+    pub name: String,
+}
+
+pub struct C_Struct {
+    pub name: String,
+    pub fields: Vec<C_Declaration>,
+}
+
 pub struct C_StructIter {
     finished: bool,
     buf_reader: BufReader<File>,
