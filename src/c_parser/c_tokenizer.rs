@@ -1,20 +1,24 @@
-use std::io::{BufReader, BufRead};
 use std::fs::File;
+use std::io::{BufRead, BufReader};
 
 use super::c_tokens::{Identifier, Token};
 
-pub struct TokenItr {
+pub struct TokenItr<'a> {
     pos: usize,
     line: String,
-    buf_reader:  BufReader<File>
+    buf_reader: &'a mut BufReader<File>,
 }
 
-impl TokenItr {
-    pub fn new(buf_reader: BufReader<File>) -> TokenItr {
-        TokenItr { pos: 0, line: String::new(), buf_reader }
+impl TokenItr<'_> {
+    pub fn new(buf_reader: &mut BufReader<File>) -> TokenItr {
+        TokenItr {
+            pos: 0,
+            line: String::new(),
+            buf_reader,
+        }
     }
 
-    fn read_next_line (&mut self) -> bool {
+    fn read_next_line(&mut self) -> bool {
         self.pos = 0;
         loop {
             self.line.clear();
@@ -33,7 +37,7 @@ impl TokenItr {
         return true;
     }
 
-    fn skip_whitespace (&mut self) -> Option<usize> {
+    fn skip_whitespace(&mut self) -> Option<usize> {
         loop {
             for one_byte in (&self.line[self.pos..]).chars() {
                 if one_byte.is_whitespace() {
@@ -44,11 +48,10 @@ impl TokenItr {
             }
 
             if self.pos >= self.line.len() {
-                if self.read_next_line () == false {
+                if self.read_next_line() == false {
                     return None;
                 }
-            }
-            else {
+            } else {
                 break;
             }
         }
@@ -56,17 +59,17 @@ impl TokenItr {
     }
 }
 
-impl Iterator for TokenItr {
+impl Iterator for TokenItr<'_> {
     type Item = Token;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.pos >= self.line.len() {
-            if self.read_next_line () == false {
+            if self.read_next_line() == false {
                 return None;
             }
         }
 
-        if let None = self.skip_whitespace () {
+        if let None = self.skip_whitespace() {
             return None;
         }
 

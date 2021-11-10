@@ -1,6 +1,8 @@
+//! This module provides a routine called parse_c_file
+//! which provides an iterator over all C structures in a file
+
 use std::fs::File;
 use std::io::BufReader;
-use std::vec::Vec;
 
 mod c_tokenizer;
 mod c_tokens;
@@ -50,28 +52,53 @@ fn parse_struct(mut itr: TokenItr) -> Option<C_Struct> {
     return None;
 }
 
-pub fn parse_c_file(filename: &str) -> Option<Vec<C_Struct>> {
-    let f = File::open(filename);
-    match f {
-        Ok(of) => {
-            let buf_reader = BufReader::new(of);
-            let mut itr = TokenItr::new(buf_reader);
+pub struct C_StructIter {
+    finished: bool,
+    buf_reader: BufReader<File>,
+}
 
-            let parsed_struct = match itr.next() {
-                Some(t) => match t {
-                    Token::STRUCT => parse_struct(itr),
-                    _ => None,
-                },
-                _ => None,
-            };
+impl C_StructIter {
+    fn new(f: File) -> C_StructIter {
+        return C_StructIter {
+            finished: false,
+            buf_reader: BufReader::new(f),
+        };
+    }
+}
 
-            match parsed_struct {
-                Some(c_struct) => {
-                    return Some(vec![c_struct]);
+impl Iterator for C_StructIter {
+    type Item = C_Struct;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.finished {
+            return None;
+        }
+
+        let mut itr = TokenItr::new(&mut self.buf_reader);
+
+        match itr.next() {
+            Some(t) => match t {
+                Token::STRUCT => parse_struct(itr),
+                _ => {
+                    self.finished = true;
+                    None
                 }
-                None => (),
+            },
+            _ => {
+                self.finished = true;
+                None
             }
         }
+    }
+}
+
+/// This routine takes a file name
+/// and returns an `Option` value of type
+/// iterator
+pub fn parse_c_file(filename: &str) -> Option<C_StructIter> {
+    let f = File::open(filename);
+    match f {
+        Ok(of) => return Some(C_StructIter::new(of)),
         Err(_) => println!("couldn't open '{}'", filename),
     }
 

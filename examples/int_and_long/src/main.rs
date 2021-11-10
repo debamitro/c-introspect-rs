@@ -1,5 +1,4 @@
 use c_introspect_rs::c_parser::parse_c_file;
-use c_introspect_rs::c_structures::C_Struct;
 use std::env::args;
 
 fn format_specifier(typename: &str) -> &'static str {
