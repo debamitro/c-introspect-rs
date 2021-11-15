@@ -7,4 +7,19 @@ None. The goal is to recognize as much of C/C++ syntax as needed, and keep every
 
 ## Example
 
-There is one example in examples/int_and_long that partially works. You can build it using cargo and run it using the examples/int_and_long/test.h file as an argument. This example will spit out a dumping routine for the C structure.
+There is one example in examples/int_and_long that partially works. You can build and run it using this command:
+
+```
+cargo run --example int_and_long -- examples/int_and_long/test.h
+```
+
+This example will spit out a dumping routine for a C structure defined in examples/int_and_long/test.h
+
+```
+void var_dump_foo (struct foo * var) {
+  printf ("struct foo = {\n");
+  printf ("  a = %d\n",var->a);
+  printf ("  big_one = %ld\n",var->big_one);
+  printf ("}\n");
+}
+```
