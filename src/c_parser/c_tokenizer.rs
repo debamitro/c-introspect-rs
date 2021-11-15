@@ -23,6 +23,9 @@ impl TokenItr<'_> {
         loop {
             self.line.clear();
             match self.buf_reader.read_line(&mut self.line) {
+                Ok(0) => {
+                    return false;
+                }
                 Ok(c) => {
                     if c > 0 {
                         break;

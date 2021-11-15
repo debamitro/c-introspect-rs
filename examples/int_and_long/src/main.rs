@@ -11,7 +11,7 @@ fn format_specifier(typename: &str) -> &'static str {
     return "%x";
 }
 
-fn generate_var_dump (filename: &str) {
+fn generate_var_dump(filename: &str) {
     if let Some(itr) = parse_c_file(filename) {
         for c_struct in itr {
             println!(
@@ -35,8 +35,8 @@ fn generate_var_dump (filename: &str) {
 
 fn main() {
     let mut command_args = args();
-    command_args.next();        // ignore the first argument
+    command_args.next(); // ignore the first argument
     if let Some(filename) = command_args.next() {
-        generate_var_dump (&filename);
+        generate_var_dump(&filename);
     }
 }

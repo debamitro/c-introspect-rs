@@ -1,4 +1,4 @@
 struct foo {
     int a;
-    int big_one;
+    long big_one;
 };

@@ -1,7 +1,9 @@
+#[derive(Debug)]
 pub struct Identifier {
     pub value: String,
 }
 
+#[derive(Debug)]
 pub enum Token {
     LBRACE,
     RBRACE,

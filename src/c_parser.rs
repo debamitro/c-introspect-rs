@@ -7,11 +7,17 @@ use std::io::BufReader;
 mod c_tokenizer;
 mod c_tokens;
 
-use crate::c_structures::*;
 use c_tokenizer::TokenItr;
 use c_tokens::{token_value, Token};
 
-fn parse_declaration(mut itr: TokenItr) -> Option<C_Declaration> {
+/// Tries to consume tokens from a `TokenItr`
+/// and parse a C variable declaration, like
+///
+/// ```
+/// type1 name1;
+/// ```
+///
+fn parse_declaration(itr: &mut TokenItr) -> Option<C_Declaration> {
     if let Some(tok1) = itr.next() {
         let valid_type = match tok1 {
             Token::INT => true,
@@ -26,10 +32,14 @@ fn parse_declaration(mut itr: TokenItr) -> Option<C_Declaration> {
 
         if let Some(tok2) = itr.next() {
             if let Token::IDENTIFIER(_) = tok2 {
-                return Some(C_Declaration {
-                    typename: token_value(tok1),
-                    name: token_value(tok2),
-                });
+                if let Some(tok3) = itr.next() {
+                    if let Token::SEMICOLON = tok3 {
+                        return Some(C_Declaration {
+                            typename: token_value(tok1),
+                            name: token_value(tok2),
+                        });
+                    }
+                }
             }
         }
     }
@@ -37,15 +47,33 @@ fn parse_declaration(mut itr: TokenItr) -> Option<C_Declaration> {
     return None;
 }
 
+/// Tries to consume tokens from a `TokenItr`
+/// and parse a C struct declaration, like
+///
+/// ```
+/// struct s1 {
+///   type1 field1;
+///   type2 field2;
+/// };
+/// ```
+///
+/// This function is called after consuming the 'struct'
+/// keyword.
+/// After successful parsing, a `C_Struct` structure is
+/// returned wrapped in an `Option`
 fn parse_struct(mut itr: TokenItr) -> Option<C_Struct> {
     if let Some(tok1 @ Token::IDENTIFIER(_)) = itr.next() {
         if let Some(Token::LBRACE) = itr.next() {
-            if let Some(d) = parse_declaration(itr) {
-                return Some(C_Struct {
-                    name: token_value(tok1),
-                    fields: vec![d],
-                });
+            let mut struct_to_return: C_Struct = C_Struct {
+                name: token_value(tok1),
+                fields: Vec::<C_Declaration>::new(),
+            };
+
+            while let Some(d) = parse_declaration(&mut itr) {
+                struct_to_return.fields.push(d);
             }
+
+            return Some(struct_to_return);
         }
     }
 
@@ -62,6 +90,7 @@ pub struct C_Struct {
     pub fields: Vec<C_Declaration>,
 }
 
+/// An iterator over `C_Struct` values
 pub struct C_StructIter {
     finished: bool,
     buf_reader: BufReader<File>,
@@ -86,17 +115,16 @@ impl Iterator for C_StructIter {
 
         let mut itr = TokenItr::new(&mut self.buf_reader);
 
-        match itr.next() {
-            Some(t) => match t {
-                Token::STRUCT => parse_struct(itr),
-                _ => {
+        loop {
+            match itr.next() {
+                Some(t) => match t {
+                    Token::STRUCT => break parse_struct(itr),
+                    _ => (),
+                },
+                None => {
                     self.finished = true;
-                    None
+                    break None;
                 }
-            },
-            _ => {
-                self.finished = true;
-                None
             }
         }
     }
@@ -104,7 +132,7 @@ impl Iterator for C_StructIter {
 
 /// This routine takes a file name
 /// and returns an `Option` value of type
-/// iterator
+/// `C_StructIter`
 pub fn parse_c_file(filename: &str) -> Option<C_StructIter> {
     let f = File::open(filename);
     match f {
