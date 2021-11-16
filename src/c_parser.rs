@@ -27,6 +27,7 @@ fn parse_declaration(itr: &mut TokenItr) -> Option<C_Declaration> {
         };
 
         if !valid_type {
+            itr.push_back (tok1);
             return None;
         }
 
@@ -73,7 +74,11 @@ fn parse_struct(mut itr: TokenItr) -> Option<C_Struct> {
                 struct_to_return.fields.push(d);
             }
 
-            return Some(struct_to_return);
+            if let Some(Token::RBRACE) = itr.next() {
+                if let Some(Token::SEMICOLON) = itr.next() {
+                    return Some(struct_to_return);
+                }
+            }
         }
     }
 

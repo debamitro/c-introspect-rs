@@ -1,5 +1,6 @@
 use std::fs::File;
 use std::io::{BufRead, BufReader};
+use std::vec::Vec;
 
 use super::c_tokens::{Identifier, Token};
 
@@ -7,6 +8,7 @@ pub struct TokenItr<'a> {
     pos: usize,
     line: String,
     buf_reader: &'a mut BufReader<File>,
+    pushed_back_tokens: Vec<Token>
 }
 
 impl TokenItr<'_> {
@@ -15,6 +17,7 @@ impl TokenItr<'_> {
             pos: 0,
             line: String::new(),
             buf_reader,
+            pushed_back_tokens: Vec::new()
         }
     }
 
@@ -60,6 +63,10 @@ impl TokenItr<'_> {
         }
         return Some(self.pos);
     }
+
+    pub fn push_back (&mut self, tok: Token) {
+        self.pushed_back_tokens.push (tok)
+    }
 }
 
 impl Iterator for TokenItr<'_> {
@@ -70,6 +77,10 @@ impl Iterator for TokenItr<'_> {
             if self.read_next_line() == false {
                 return None;
             }
+        }
+
+        if let Some(tok) = self.pushed_back_tokens.pop() {
+            return Some(tok);
         }
 
         if let None = self.skip_whitespace() {
