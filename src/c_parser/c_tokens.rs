@@ -11,6 +11,8 @@ pub enum Token {
     INT,
     LONG,
     STRUCT,
+    TYPEDEF,
+    CLASS,
     IDENTIFIER(Identifier),
 }
 
@@ -22,6 +24,8 @@ pub fn token_value(tok: Token) -> String {
         Token::INT => String::from("int"),
         Token::LONG => String::from("long"),
         Token::STRUCT => String::from("struct"),
+        Token::TYPEDEF => String::from("typedef"),
+        Token::CLASS => String::from("class"),
         Token::IDENTIFIER(id) => id.value,
     }
 }

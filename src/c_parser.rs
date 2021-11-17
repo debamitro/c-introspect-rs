@@ -27,7 +27,7 @@ fn parse_declaration(itr: &mut TokenItr) -> Option<C_Declaration> {
         };
 
         if !valid_type {
-            itr.push_back (tok1);
+            itr.push_back(tok1);
             return None;
         }
 
@@ -49,7 +49,7 @@ fn parse_declaration(itr: &mut TokenItr) -> Option<C_Declaration> {
 }
 
 /// Tries to consume tokens from a `TokenItr`
-/// and parse a C struct declaration, like
+/// and parse a C++ struct declaration, like
 ///
 /// ```
 /// struct s1 {
@@ -77,6 +77,46 @@ fn parse_struct(mut itr: TokenItr) -> Option<C_Struct> {
             if let Some(Token::RBRACE) = itr.next() {
                 if let Some(Token::SEMICOLON) = itr.next() {
                     return Some(struct_to_return);
+                }
+            }
+        }
+    }
+
+    return None;
+}
+
+/// Tries to consume tokens from a `TokenItr`
+/// and parse a C struct declaration, like
+///
+/// ```
+/// typedef struct {
+///   type1 field1;
+///   type2 field2;
+/// } s1;
+/// ```
+///
+/// This function is called after consuming the 'typedef'
+/// keyword.
+/// After successful parsing, a `C_Struct` structure is
+/// returned wrapped in an `Option`
+fn parse_typedef_struct(mut itr: TokenItr) -> Option<C_Struct> {
+    if let Some(Token::STRUCT) = itr.next() {
+        if let Some(Token::LBRACE) = itr.next() {
+            let mut struct_to_return: C_Struct = C_Struct {
+                name: String::from(""),
+                fields: Vec::<C_Declaration>::new(),
+            };
+
+            while let Some(d) = parse_declaration(&mut itr) {
+                struct_to_return.fields.push(d);
+            }
+
+            if let Some(Token::RBRACE) = itr.next() {
+                if let Some(tok1 @ Token::IDENTIFIER(_)) = itr.next() {
+                    if let Some(Token::SEMICOLON) = itr.next() {
+                        struct_to_return.name = token_value(tok1);
+                        return Some(struct_to_return);
+                    }
                 }
             }
         }
@@ -124,6 +164,7 @@ impl Iterator for C_StructIter {
             match itr.next() {
                 Some(t) => match t {
                     Token::STRUCT => break parse_struct(itr),
+                    Token::TYPEDEF => break parse_typedef_struct(itr),
                     _ => (),
                 },
                 None => {

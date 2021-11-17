@@ -8,7 +8,7 @@ pub struct TokenItr<'a> {
     pos: usize,
     line: String,
     buf_reader: &'a mut BufReader<File>,
-    pushed_back_tokens: Vec<Token>
+    pushed_back_tokens: Vec<Token>,
 }
 
 impl TokenItr<'_> {
@@ -17,7 +17,7 @@ impl TokenItr<'_> {
             pos: 0,
             line: String::new(),
             buf_reader,
-            pushed_back_tokens: Vec::new()
+            pushed_back_tokens: Vec::new(),
         }
     }
 
@@ -43,11 +43,13 @@ impl TokenItr<'_> {
         return true;
     }
 
-    fn skip_whitespace(&mut self) -> Option<usize> {
+    fn skip_whitespace(&mut self) -> Option<bool> {
+        let mut did_skip = false;
         loop {
             for one_byte in (&self.line[self.pos..]).chars() {
                 if one_byte.is_whitespace() {
                     self.pos += 1;
+                    did_skip = true;
                 } else {
                     break;
                 }
@@ -61,11 +63,52 @@ impl TokenItr<'_> {
                 break;
             }
         }
-        return Some(self.pos);
+        return Some(did_skip);
     }
 
-    pub fn push_back (&mut self, tok: Token) {
-        self.pushed_back_tokens.push (tok)
+    fn skip_comment(&mut self) -> Option<bool> {
+        if self.line.len() - self.pos < 2 {
+            // We need at least two characters to start a comment
+            return Some(false);
+        }
+
+        if &self.line[self.pos..self.pos + 2] == "//" {
+            if self.read_next_line() == false {
+                return None;
+            } else {
+                return Some(true);
+            }
+        }
+
+        if &self.line[self.pos..self.pos + 2] == "/*" {
+            self.pos += 2;
+            let mut previous_byte: char = '*';
+            loop {
+                for one_byte in (&self.line[self.pos..]).chars() {
+                    self.pos += 1;
+                    if one_byte == '/' && previous_byte == '*' {
+                        break;
+                    } else {
+                        previous_byte = one_byte;
+                    }
+                }
+
+                if self.pos >= self.line.len() {
+                    if self.read_next_line() == false {
+                        return None;
+                    }
+                } else {
+                    break;
+                }
+            }
+            return Some(true);
+        }
+
+        return Some(false);
+    }
+
+    pub fn push_back(&mut self, tok: Token) {
+        self.pushed_back_tokens.push(tok)
     }
 }
 
@@ -83,8 +126,22 @@ impl Iterator for TokenItr<'_> {
             return Some(tok);
         }
 
-        if let None = self.skip_whitespace() {
-            return None;
+        loop {
+            let mut did_skip: bool;
+
+            match self.skip_whitespace() {
+                Some(tf) => did_skip = tf,
+                None => return None,
+            }
+
+            match self.skip_comment() {
+                Some(tf) => did_skip = tf,
+                None => return None,
+            }
+
+            if !did_skip {
+                break;
+            }
         }
 
         let mut itr = (&self.line[self.pos..]).chars();
@@ -122,12 +179,16 @@ impl Iterator for TokenItr<'_> {
                 }
                 self.pos = end;
 
-                if &self.line[start..end] == "struct" {
-                    Some(Token::STRUCT)
-                } else {
-                    Some(Token::IDENTIFIER(Identifier {
-                        value: (&self.line[start..end]).to_string(),
-                    }))
+                let token_text: &str = &self.line[start..end];
+                match token_text {
+                    "struct" => Some(Token::STRUCT),
+                    "typedef" => Some(Token::TYPEDEF),
+                    "class" => Some(Token::CLASS),
+                    "int" => Some(Token::INT),
+                    "long" => Some(Token::LONG),
+                    _ => Some(Token::IDENTIFIER(Identifier {
+                        value: token_text.to_string(),
+                    })),
                 }
             }
         }
