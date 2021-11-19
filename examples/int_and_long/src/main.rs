@@ -12,6 +12,7 @@ fn format_specifier(typename: &str) -> &'static str {
 }
 
 fn generate_var_dump(filename: &str) {
+    println!("// Scanning {}", filename);
     if let Some(itr) = parse_c_file(filename) {
         for c_struct in itr {
             println!(

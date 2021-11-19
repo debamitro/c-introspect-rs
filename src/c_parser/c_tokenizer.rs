@@ -72,7 +72,7 @@ impl TokenItr<'_> {
             return Some(false);
         }
 
-        if &self.line[self.pos..self.pos + 2] == "//" {
+        if self.line[self.pos..].starts_with("//") {
             if self.read_next_line() == false {
                 return None;
             } else {
@@ -80,16 +80,16 @@ impl TokenItr<'_> {
             }
         }
 
-        if &self.line[self.pos..self.pos + 2] == "/*" {
+        if self.line[self.pos..].starts_with("/*") {
             self.pos += 2;
-            let mut previous_byte: char = '*';
+            let mut previous_char: char = '*';
             loop {
-                for one_byte in (&self.line[self.pos..]).chars() {
-                    self.pos += 1;
-                    if one_byte == '/' && previous_byte == '*' {
+                for one_char in (&self.line[self.pos..]).chars() {
+                    self.pos += one_char.len_utf8();
+                    if one_char == '/' && previous_char == '*' {
                         break;
                     } else {
-                        previous_byte = one_byte;
+                        previous_char = one_char;
                     }
                 }
 

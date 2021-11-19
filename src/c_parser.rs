@@ -109,7 +109,6 @@ fn parse_struct(mut itr: TokenItr) -> Option<C_Struct> {
 /// returned wrapped in an `Option`
 fn parse_typedef_struct(mut itr: TokenItr) -> Option<C_Struct> {
     if let Some(Token::STRUCT) = itr.next() {
-
         let mut tok_identifier_or_lbrace = itr.next();
         if let Some(Token::IDENTIFIER(_)) = tok_identifier_or_lbrace {
             tok_identifier_or_lbrace = itr.next();
