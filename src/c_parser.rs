@@ -1,5 +1,5 @@
 //! This module provides a routine called parse_c_file
-//! which provides an iterator over all C structures in a file
+//! which provides an iterator over all C/C++ structs in a file
 
 use std::fs::File;
 use std::io::BufReader;
@@ -94,6 +94,14 @@ fn parse_struct(mut itr: TokenItr) -> Option<C_Struct> {
 ///   type2 field2;
 /// } s1;
 /// ```
+/// or
+///
+/// ```
+/// typedef struct _s1 {
+///   type1 field1;
+///   type2 field2;
+/// } s1;
+/// ```
 ///
 /// This function is called after consuming the 'typedef'
 /// keyword.
@@ -101,7 +109,13 @@ fn parse_struct(mut itr: TokenItr) -> Option<C_Struct> {
 /// returned wrapped in an `Option`
 fn parse_typedef_struct(mut itr: TokenItr) -> Option<C_Struct> {
     if let Some(Token::STRUCT) = itr.next() {
-        if let Some(Token::LBRACE) = itr.next() {
+
+        let mut tok_identifier_or_lbrace = itr.next();
+        if let Some(Token::IDENTIFIER(_)) = tok_identifier_or_lbrace {
+            tok_identifier_or_lbrace = itr.next();
+        }
+
+        if let Some(Token::LBRACE) = tok_identifier_or_lbrace {
             let mut struct_to_return: C_Struct = C_Struct {
                 name: String::from(""),
                 fields: Vec::<C_Declaration>::new(),
@@ -125,11 +139,21 @@ fn parse_typedef_struct(mut itr: TokenItr) -> Option<C_Struct> {
     return None;
 }
 
+/// A structure which
+/// conveys information about
+/// a C/C++ variable as two strings.
+/// One for the type and one for the name.
 pub struct C_Declaration {
     pub typename: String,
     pub name: String,
 }
 
+/// A structure which
+/// conveys information about
+/// a C/C++ struct, including its name
+/// and its fields. Every field
+/// of the struct is represented as a `C_Declaration`
+/// variable.
 pub struct C_Struct {
     pub name: String,
     pub fields: Vec<C_Declaration>,
