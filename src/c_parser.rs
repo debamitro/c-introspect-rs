@@ -10,6 +10,24 @@ mod c_tokens;
 use c_tokenizer::TokenItr;
 use c_tokens::{token_value, Token};
 
+#[macro_export]
+macro_rules! match_token {
+    ( $itr:expr, $target:path ) => {
+        if let Some(tok) = $itr.next() {
+            if let $target = tok {
+                Some($target)
+            }
+            else {
+                $itr.push_back (tok);
+                None
+            }
+        }
+        else {
+            None
+        }
+    };
+}
+
 /// Tries to consume tokens from a `TokenItr`
 /// and parse a C variable declaration, like
 ///
@@ -62,7 +80,7 @@ fn parse_declaration(itr: &mut TokenItr) -> Option<C_Declaration> {
 /// keyword.
 /// After successful parsing, a `C_Struct` structure is
 /// returned wrapped in an `Option`
-fn parse_struct(mut itr: TokenItr) -> Option<C_Struct> {
+fn parse_struct(itr: &mut TokenItr) -> Option<C_Struct> {
     if let Some(tok1 @ Token::IDENTIFIER(_)) = itr.next() {
         if let Some(Token::LBRACE) = itr.next() {
             let mut struct_to_return: C_Struct = C_Struct {
@@ -70,12 +88,12 @@ fn parse_struct(mut itr: TokenItr) -> Option<C_Struct> {
                 fields: Vec::<C_Declaration>::new(),
             };
 
-            while let Some(d) = parse_declaration(&mut itr) {
+            while let Some(d) = parse_declaration(itr) {
                 struct_to_return.fields.push(d);
             }
 
-            if let Some(Token::RBRACE) = itr.next() {
-                if let Some(Token::SEMICOLON) = itr.next() {
+            if let Some(_) = match_token! (itr, Token::RBRACE) {
+                if let Some(_) = match_token! (itr, Token::SEMICOLON) {
                     return Some(struct_to_return);
                 }
             }
@@ -186,7 +204,7 @@ impl Iterator for C_StructIter {
         loop {
             match itr.next() {
                 Some(t) => match t {
-                    Token::STRUCT => break parse_struct(itr),
+                    Token::STRUCT => if let Some(f) = parse_struct(&mut itr) { break Some(f) } else {()},
                     Token::TYPEDEF => break parse_typedef_struct(itr),
                     _ => (),
                 },
