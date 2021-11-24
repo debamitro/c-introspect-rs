@@ -16,13 +16,11 @@ macro_rules! match_token {
         if let Some(tok) = $itr.next() {
             if let $target = tok {
                 Some($target)
-            }
-            else {
-                $itr.push_back (tok);
+            } else {
+                $itr.push_back(tok);
                 None
             }
-        }
-        else {
+        } else {
             None
         }
     };
@@ -51,14 +49,14 @@ fn parse_declaration(itr: &mut TokenItr) -> Option<C_Declaration> {
 
         if let Some(tok2) = itr.next() {
             if let Token::IDENTIFIER(_) = tok2 {
-                if let Some(tok3) = itr.next() {
-                    if let Token::SEMICOLON = tok3 {
-                        return Some(C_Declaration {
-                            typename: token_value(tok1),
-                            name: token_value(tok2),
-                        });
-                    }
+                if let Some(_) = match_token!(itr, Token::SEMICOLON) {
+                    return Some(C_Declaration {
+                        typename: token_value(tok1),
+                        name: token_value(tok2),
+                    });
                 }
+            } else {
+                itr.push_back(tok2);
             }
         }
     }
@@ -92,8 +90,8 @@ fn parse_struct(itr: &mut TokenItr) -> Option<C_Struct> {
                 struct_to_return.fields.push(d);
             }
 
-            if let Some(_) = match_token! (itr, Token::RBRACE) {
-                if let Some(_) = match_token! (itr, Token::SEMICOLON) {
+            if let Some(_) = match_token!(itr, Token::RBRACE) {
+                if let Some(_) = match_token!(itr, Token::SEMICOLON) {
                     return Some(struct_to_return);
                 }
             }
@@ -125,7 +123,7 @@ fn parse_struct(itr: &mut TokenItr) -> Option<C_Struct> {
 /// keyword.
 /// After successful parsing, a `C_Struct` structure is
 /// returned wrapped in an `Option`
-fn parse_typedef_struct(mut itr: TokenItr) -> Option<C_Struct> {
+fn parse_typedef_struct(itr: &mut TokenItr) -> Option<C_Struct> {
     if let Some(Token::STRUCT) = itr.next() {
         let mut tok_identifier_or_lbrace = itr.next();
         if let Some(Token::IDENTIFIER(_)) = tok_identifier_or_lbrace {
@@ -138,7 +136,7 @@ fn parse_typedef_struct(mut itr: TokenItr) -> Option<C_Struct> {
                 fields: Vec::<C_Declaration>::new(),
             };
 
-            while let Some(d) = parse_declaration(&mut itr) {
+            while let Some(d) = parse_declaration(itr) {
                 struct_to_return.fields.push(d);
             }
 
@@ -204,8 +202,20 @@ impl Iterator for C_StructIter {
         loop {
             match itr.next() {
                 Some(t) => match t {
-                    Token::STRUCT => if let Some(f) = parse_struct(&mut itr) { break Some(f) } else {()},
-                    Token::TYPEDEF => break parse_typedef_struct(itr),
+                    Token::STRUCT => {
+                        if let Some(f) = parse_struct(&mut itr) {
+                            break Some(f);
+                        } else {
+                            ()
+                        }
+                    }
+                    Token::TYPEDEF => {
+                        if let Some(f) = parse_typedef_struct(&mut itr) {
+                            break Some(f);
+                        } else {
+                            ()
+                        }
+                    }
                     _ => (),
                 },
                 None => {
