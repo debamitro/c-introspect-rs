@@ -47,16 +47,25 @@ fn parse_declaration(itr: &mut TokenItr) -> Option<C_Declaration> {
             return None;
         }
 
-        if let Some(tok2) = itr.next() {
-            if let Token::IDENTIFIER(_) = tok2 {
+        if let Some(mut tok_id) = itr.next() {
+            let mut typename = token_value(tok1);
+            if let Token::STAR = tok_id {
+                typename.push_str(&token_value(tok_id));
+                if let Some(tok3) = itr.next() {
+                    tok_id = tok3;
+                } else {
+                    return None;
+                }
+            }
+            if let Token::IDENTIFIER(_) = tok_id {
                 if let Some(_) = match_token!(itr, Token::SEMICOLON) {
                     return Some(C_Declaration {
-                        typename: token_value(tok1),
-                        name: token_value(tok2),
+                        typename: typename,
+                        name: token_value(tok_id),
                     });
                 }
             } else {
-                itr.push_back(tok2);
+                itr.push_back(tok_id);
             }
         }
     }

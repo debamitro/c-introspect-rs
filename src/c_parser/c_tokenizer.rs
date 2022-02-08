@@ -160,6 +160,10 @@ impl Iterator for TokenItr<'_> {
                 self.pos += 1;
                 Some(Token::SEMICOLON)
             }
+            Some('*') => {
+                self.pos += 1;
+                Some(Token::STAR)
+            }
             _ => {
                 let mut end: usize = start + 1;
                 loop {
