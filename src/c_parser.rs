@@ -12,15 +12,11 @@ use c_tokens::{token_value, Token};
 
 #[macro_export]
 macro_rules! match_token {
-    ( $itr:expr, $target:path ) => {
-        if let Some(tok) = $itr.next() {
-            if let $target = tok {
-                Some($target)
-            } else {
-                $itr.push_back(tok);
-                None
-            }
+    ( $itr:expr, $tok:expr, $target:path ) => {
+        if let $target = $tok {
+            Some($target)
         } else {
+            $itr.push_back($tok);
             None
         }
     };
@@ -34,40 +30,36 @@ macro_rules! match_token {
 /// ```
 ///
 fn parse_declaration(itr: &mut TokenItr) -> Option<C_Declaration> {
-    if let Some(tok1) = itr.next() {
-        let valid_type = match tok1 {
-            Token::INT => true,
-            Token::LONG => true,
-            Token::IDENTIFIER(_) => true,
-            _ => false,
-        };
+    let tok1 = itr.next()?;
 
-        if !valid_type {
-            itr.push_back(tok1);
-            return None;
-        }
+    let valid_type = match tok1 {
+        Token::INT => true,
+        Token::LONG => true,
+        Token::IDENTIFIER(_) => true,
+        _ => false,
+    };
 
-        if let Some(mut tok_id) = itr.next() {
-            let mut typename = token_value(tok1);
-            if let Token::STAR = tok_id {
-                typename.push_str(&token_value(tok_id));
-                if let Some(tok3) = itr.next() {
-                    tok_id = tok3;
-                } else {
-                    return None;
-                }
-            }
-            if let Token::IDENTIFIER(_) = tok_id {
-                if let Some(_) = match_token!(itr, Token::SEMICOLON) {
-                    return Some(C_Declaration {
-                        typename: typename,
-                        name: token_value(tok_id),
-                    });
-                }
-            } else {
-                itr.push_back(tok_id);
-            }
+    if !valid_type {
+        itr.push_back(tok1);
+        return None;
+    }
+
+    let mut tok_id = itr.next()?;
+    let mut typename = token_value(tok1);
+    if let Token::STAR = tok_id {
+        typename.push_str(&token_value(tok_id));
+        tok_id = itr.next()?;
+    }
+    if let Token::IDENTIFIER(_) = tok_id {
+        let tok_semicolon = itr.next()?;
+        if let Some(_) = match_token!(itr, tok_semicolon, Token::SEMICOLON) {
+            return Some(C_Declaration {
+                typename: typename,
+                name: token_value(tok_id),
+            });
         }
+    } else {
+        itr.push_back(tok_id);
     }
 
     return None;
@@ -88,8 +80,10 @@ fn parse_declaration(itr: &mut TokenItr) -> Option<C_Declaration> {
 /// After successful parsing, a `C_Struct` structure is
 /// returned wrapped in an `Option`
 fn parse_struct(itr: &mut TokenItr) -> Option<C_Struct> {
-    if let Some(tok1 @ Token::IDENTIFIER(_)) = itr.next() {
-        if let Some(Token::LBRACE) = itr.next() {
+    let tok1 = itr.next()?;
+    if let Token::IDENTIFIER(_) = tok1 {
+        let tok_rbrace = itr.next()?;
+        if let Token::LBRACE = tok_rbrace {
             let mut struct_to_return: C_Struct = C_Struct {
                 name: token_value(tok1),
                 fields: Vec::<C_Declaration>::new(),
@@ -99,8 +93,10 @@ fn parse_struct(itr: &mut TokenItr) -> Option<C_Struct> {
                 struct_to_return.fields.push(d);
             }
 
-            if let Some(_) = match_token!(itr, Token::RBRACE) {
-                if let Some(_) = match_token!(itr, Token::SEMICOLON) {
+            let tok_rbrace = itr.next()?;
+            if let Some(_) = match_token!(itr, tok_rbrace, Token::RBRACE) {
+                let tok_semicolon = itr.next()?;
+                if let Some(_) = match_token!(itr, tok_semicolon, Token::SEMICOLON) {
                     return Some(struct_to_return);
                 }
             }
