@@ -23,13 +23,13 @@ macro_rules! match_token {
 }
 
 /// Tries to consume tokens from a `TokenItr`
-/// and parse a C variable declaration, like
+/// and parse a C type declaration, like
 ///
 /// ```
 /// type1 name1;
 /// ```
 ///
-fn parse_declaration(itr: &mut TokenItr) -> Option<C_Declaration> {
+fn parse_type(itr: &mut TokenItr) -> Option<String> {
     let tok1 = itr.next()?;
 
     let valid_type = match tok1 {
@@ -44,12 +44,31 @@ fn parse_declaration(itr: &mut TokenItr) -> Option<C_Declaration> {
         return None;
     }
 
-    let mut tok_id = itr.next()?;
     let mut typename = token_value(tok1);
-    if let Token::STAR = tok_id {
-        typename.push_str(&token_value(tok_id));
-        tok_id = itr.next()?;
+    loop {
+        let tok_star = itr.next()?;
+        if let Token::STAR = tok_star {
+            typename.push_str(&token_value(tok_star));
+        } else {
+            itr.push_back(tok_star);
+            break;
+        }
     }
+
+    Some(typename)
+}
+
+/// Tries to consume tokens from a `TokenItr`
+/// and parse a C variable declaration, like
+///
+/// ```
+/// type1 name1;
+/// ```
+///
+fn parse_declaration(itr: &mut TokenItr) -> Option<C_Declaration> {
+    let typename = parse_type(itr)?;
+
+    let tok_id = itr.next()?;
     if let Token::IDENTIFIER(_) = tok_id {
         let tok_semicolon = itr.next()?;
         if let Some(_) = match_token!(itr, tok_semicolon, Token::SEMICOLON) {
